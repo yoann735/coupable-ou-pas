@@ -142,30 +142,46 @@ d'horloge : les minuteurs sont donc identiques sur tous les écrans.
 
 ## Déploiement
 
-L'état des parties vit **en mémoire** : il faut donc un serveur unique et persistant
-(pas de plateforme purement serverless, et pas de scaling multi-instances sans Redis).
+L'état des parties vit **en mémoire**, et les manches avancent avec des minuteurs
+dans le processus : il faut donc **un serveur Node permanent et unique**.
 
-### Option 1 — tout sur une seule plateforme (le plus simple)
+> ⚠️ **Pourquoi pas le serveur sur Vercel ?** Vercel sait servir du Socket.IO, mais
+> la doc est explicite : *« New WebSocket connections are not guaranteed to reach the
+> same Vercel Function instance »* et *« WebSocket connections close when a Vercel
+> Function reaches its maximum duration »* (300 s en Hobby). Une partie dure 10 à
+> 20 minutes : elle casserait en plein milieu. Le client, lui, est un pur build
+> statique et va très bien sur Vercel.
 
-Sur **Render**, **Railway** ou **Fly.io**, en service web Node :
+### 1. Le serveur temps réel sur Render
 
-- Build : `npm install && npm run build`
-- Start : `npm start`
+Le dépôt contient un blueprint `render.yaml`. Sur [render.com](https://render.com) :
+**New → Blueprint → choisir ce dépôt → Apply**. Rien d'autre à régler.
 
-Le serveur détecte `client/dist` et sert le client sur le même domaine ; les WebSockets
-passent par la même origine, aucune configuration CORS n'est nécessaire.
+Le build compile aussi le client : **l'URL Render sert donc le jeu complet à elle
+seule** (`https://coupable-ou-pas.onrender.com`). Vercel n'est qu'une couche CDN
+en plus.
 
-### Option 2 — client statique + serveur séparé
+Le plan gratuit met le service en veille après 15 minutes d'inactivité : la
+première connexion peut mettre ~50 s à réveiller le serveur.
 
-1. Serveur (Render / Railway / Fly.io) : `npm start`, avec `CORS_ORIGIN` réglé sur le
-   domaine du client.
-2. Client (Netlify / Vercel / Cloudflare Pages) :
-   - Build : `npm install && npm run build --workspace client`
-   - Dossier publié : `client/dist`
-   - Variable d'environnement : `VITE_SERVER_URL=https://mon-serveur.exemple.com`
+Railway et Fly.io fonctionnent aussi : build `npm install && npm run build`,
+démarrage `npm start`, et c'est tout.
 
-Sur Render, pensez à activer les WebSockets (actifs par défaut sur les services web) ;
-sur Fly.io, aucune configuration particulière n'est requise.
+### 2. Le client sur Vercel
+
+Le projet Vercel utilise `vercel.json` (framework Vite, sortie `client/dist`).
+Une seule variable d'environnement à ajouter dans **Settings → Environment
+Variables** :
+
+| Variable | Valeur |
+| --- | --- |
+| `VITE_SERVER_URL` | l'URL du serveur Render, ex. `https://coupable-ou-pas.onrender.com` |
+
+Sans cette variable, le client parle au serveur qui lui a servi la page — ce qui
+est exactement le comportement voulu pour le déploiement Render tout-en-un.
+
+Côté serveur, `CORS_ORIGIN` peut être restreint au domaine Vercel une fois celui-ci
+connu (par défaut `*`).
 
 ## Personnaliser les cartes
 

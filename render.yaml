@@ -1,0 +1,20 @@
+# Blueprint Render : héberge le serveur temps réel (processus Node permanent,
+# ce que Vercel ne peut pas faire pour du Socket.IO avec état en mémoire).
+#
+# Le build compile aussi le client : cette URL Render sert donc le jeu complet,
+# même sans Vercel. Vercel sert ensuite le même client via son CDN.
+services:
+  - type: web
+    name: coupable-ou-pas
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/sante
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Domaine autorisé à se connecter (l'URL Vercel). "*" convient pour démarrer.
+      - key: CORS_ORIGIN
+        value: "*"
