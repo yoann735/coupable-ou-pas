@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '../../shared/types';
 import {
-  ajouterCarte,
+  ajouterCartes,
   cocherMot,
   creerPartie,
   deconnecter,
@@ -138,17 +138,14 @@ function brancherSockets(io: Server<ClientToServerEvents, ServerToClientEvents, 
       avecPartie((game, playerId) => majReglages(game, playerId, patch ?? {}));
     });
 
-    socket.on('ajouter_carte', (p) => {
-      avecPartie((game) => {
-        if (!p || (p.type !== 'ACCUSATION' && p.type !== 'OBJET')) return;
-        ajouterCarte(game, p.type, p.texte);
-      });
+    socket.on('ajouter_cartes', (p) => {
+      avecPartie((game, playerId) => ajouterCartes(game, playerId, p ?? {}));
     });
 
     socket.on('supprimer_carte', (p) => {
-      avecPartie((game) => {
+      avecPartie((game, playerId) => {
         if (!p || (p.type !== 'ACCUSATION' && p.type !== 'OBJET')) return;
-        supprimerCarte(game, p.type, p.texte);
+        supprimerCarte(game, playerId, p.type, p.texte);
       });
     });
 

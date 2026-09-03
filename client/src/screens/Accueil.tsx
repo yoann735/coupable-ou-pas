@@ -59,6 +59,9 @@ export default function Accueil() {
         <p className="mx-auto mt-3 max-w-xs text-sm font-bold text-parchemin/75">
           Défendez-vous devant le tribunal. Chacun son téléphone, 4 joueurs minimum.
         </p>
+        <p className="mt-2 text-xs font-extrabold uppercase tracking-wide text-laiton/80">
+          🔞 Jeu d'ambiance pour adultes
+        </p>
       </header>
 
       {mode === 'accueil' && (

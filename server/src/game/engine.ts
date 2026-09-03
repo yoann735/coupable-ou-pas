@@ -11,7 +11,12 @@ import type {
   Vote,
 } from '../../../shared/types';
 import { MAX_JOUEURS, MAX_PSEUDO, MIN_JOUEURS } from '../../../shared/types';
-import { ACCUSATIONS, OBJETS } from '../data/cards';
+import {
+  LONGUEUR_MAX_ACCUSATION,
+  LONGUEUR_MAX_OBJET,
+  nouveauDeck,
+  type Deck,
+} from '../data/deck';
 import { auHasard, genererCode, melanger, nettoyerPseudo, nettoyerTexteCarte, nouvelId } from './utils';
 
 // ---------------------------------------------------------------------------
@@ -27,7 +32,9 @@ export const DUREE_TIRAGE = ms('DUREE_TIRAGE_MS', 5200);
 export const DUREE_VOTE = ms('DUREE_VOTE_MS', 30000);
 export const DUREE_RESULTAT = ms('DUREE_RESULTAT_MS', 20000);
 
-const MAX_LONGUEUR_CARTE = 120;
+/** Nombre maximum de cartes ajoutées à la main, par type. */
+const MAX_CARTES_PERSO = 100;
+
 /** Une partie sans aucun joueur connecté est supprimée après ce délai. */
 const TTL_PARTIE_VIDE_MS = 20 * 60 * 1000;
 
@@ -57,6 +64,8 @@ export interface ServerGame {
   players: Player[];
   settings: Settings;
   round: ServerRound | null;
+  /** Deck de la partie : cartes de cards.json + cartes ajoutées dans le salon. */
+  deck: Deck;
   usedAccusationCards: string[];
   usedObjectCards: string[];
   cartesPerso: { accusations: string[]; objets: string[] };
@@ -111,6 +120,10 @@ export function etatPublic(game: ServerGame): GameState {
     round,
     totalManches: game.totalManches,
     serverNow: Date.now(),
+    deck: {
+      accusations: game.deck.accusations.length,
+      objets: game.deck.objets.length,
+    },
     cartesPerso: {
       accusations: [...game.cartesPerso.accusations],
       objets: [...game.cartesPerso.objets],
@@ -169,7 +182,7 @@ function connectes(game: ServerGame): Player[] {
 }
 
 function piocherAccusation(game: ServerGame): string {
-  const deck = [...ACCUSATIONS, ...game.cartesPerso.accusations];
+  const deck = game.deck.accusations;
   let dispo = deck.filter((c) => !game.usedAccusationCards.includes(c));
   if (dispo.length === 0) {
     game.usedAccusationCards = [];
@@ -181,7 +194,7 @@ function piocherAccusation(game: ServerGame): string {
 }
 
 function piocherObjets(game: ServerGame, n = 3): string[] {
-  const deck = [...OBJETS, ...game.cartesPerso.objets];
+  const deck = game.deck.objets;
   let dispo = deck.filter((c) => !game.usedObjectCards.includes(c));
   if (dispo.length < n) {
     game.usedObjectCards = [];
@@ -222,6 +235,7 @@ export function creerPartie(pseudoBrut: string): { game: ServerGame; player: Pla
     players: [player],
     settings: { toursParJoueur: 3, dureeDefenseSec: 120 },
     round: null,
+    deck: nouveauDeck(),
     usedAccusationCards: [],
     usedObjectCards: [],
     cartesPerso: { accusations: [], objets: [] },
@@ -303,22 +317,65 @@ export function majReglages(game: ServerGame, byId: string, patch: Partial<Setti
   diffuser(game);
 }
 
-export function ajouterCarte(game: ServerGame, type: 'ACCUSATION' | 'OBJET', texteBrut: string) {
-  if (game.phase !== 'LOBBY') return;
-  const texte = nettoyerTexteCarte(texteBrut, MAX_LONGUEUR_CARTE);
-  if (!texte) return;
-  const liste = type === 'ACCUSATION' ? game.cartesPerso.accusations : game.cartesPerso.objets;
-  if (liste.length >= 60) return;
-  if (liste.some((c) => c.toLowerCase() === texte.toLowerCase())) return;
-  liste.push(texte);
+/**
+ * Ajout en bloc depuis le salon (une ligne = une carte), réservé à l'hôte.
+ * Renvoie le nombre de cartes réellement ajoutées par type.
+ */
+export function ajouterCartes(
+  game: ServerGame,
+  byId: string,
+  p: { accusations?: unknown; objets?: unknown }
+) {
+  if (game.hostId !== byId || game.phase !== 'LOBBY') return;
+
+  const ajouterListe = (
+    brut: unknown,
+    cible: string[],
+    perso: string[],
+    longueurMax: number,
+    longueurMin: number
+  ) => {
+    if (!Array.isArray(brut)) return;
+    for (const ligne of brut.slice(0, 200)) {
+      if (perso.length >= MAX_CARTES_PERSO) break;
+      // On rejette plutôt que de tronquer : une carte coupée au milieu d'un mot
+      // serait pire que pas de carte du tout.
+      const texte = typeof ligne === 'string' ? ligne.replace(/\s+/g, ' ').trim() : '';
+      if (texte.length < longueurMin || texte.length > longueurMax) continue;
+      const cle = texte.toLowerCase();
+      if (cible.some((c) => c.toLowerCase() === cle)) continue; // doublon : ignoré
+      cible.push(texte);
+      perso.push(texte);
+    }
+  };
+
+  ajouterListe(
+    p?.accusations,
+    game.deck.accusations,
+    game.cartesPerso.accusations,
+    LONGUEUR_MAX_ACCUSATION,
+    3
+  );
+  ajouterListe(p?.objets, game.deck.objets, game.cartesPerso.objets, LONGUEUR_MAX_OBJET, 1);
+
   diffuser(game);
 }
 
-export function supprimerCarte(game: ServerGame, type: 'ACCUSATION' | 'OBJET', texte: string) {
-  if (game.phase !== 'LOBBY') return;
-  const liste = type === 'ACCUSATION' ? game.cartesPerso.accusations : game.cartesPerso.objets;
-  const i = liste.indexOf(texte);
-  if (i >= 0) liste.splice(i, 1);
+export function supprimerCarte(
+  game: ServerGame,
+  byId: string,
+  type: 'ACCUSATION' | 'OBJET',
+  texte: string
+) {
+  if (game.hostId !== byId || game.phase !== 'LOBBY') return;
+  const perso =
+    type === 'ACCUSATION' ? game.cartesPerso.accusations : game.cartesPerso.objets;
+  const deck = type === 'ACCUSATION' ? game.deck.accusations : game.deck.objets;
+  const i = perso.indexOf(texte);
+  if (i < 0) return; // on ne supprime que les cartes ajoutées dans le salon
+  perso.splice(i, 1);
+  const j = deck.indexOf(texte);
+  if (j >= 0) deck.splice(j, 1);
   diffuser(game);
 }
 

@@ -6,8 +6,9 @@ import { Bouton, Ecran, Etiquette, Jeton, Panneau } from '../components/ui';
 export default function Salon() {
   const { etat, moi, estHote, actions } = useJeu();
   const [copie, setCopie] = useState(false);
-  const [ongletCartes, setOngletCartes] = useState<'ferme' | 'ACCUSATION' | 'OBJET'>('ferme');
-  const [nouvelleCarte, setNouvelleCarte] = useState('');
+  const [deckOuvert, setDeckOuvert] = useState(false);
+  const [txtAccusations, setTxtAccusations] = useState('');
+  const [txtObjets, setTxtObjets] = useState('');
   if (!etat) return null;
 
   const connectes = etat.players.filter((p) => p.connected);
@@ -33,20 +34,24 @@ export default function Salon() {
     }
   };
 
-  const ajouter = () => {
-    if (ongletCartes === 'ferme') return;
-    const t = nouvelleCarte.trim();
-    if (!t) return;
-    actions.ajouterCarte(ongletCartes, t);
-    setNouvelleCarte('');
-  };
+  /** Une ligne = une carte. */
+  const lignes = (texte: string) =>
+    texte
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
 
-  const listePerso =
-    ongletCartes === 'ACCUSATION'
-      ? etat.cartesPerso.accusations
-      : ongletCartes === 'OBJET'
-        ? etat.cartesPerso.objets
-        : [];
+  const aQuoiAjouter = lignes(txtAccusations).length > 0 || lignes(txtObjets).length > 0;
+
+  const ajouterCartes = () => {
+    if (!aQuoiAjouter) return;
+    actions.ajouterCartes({
+      accusations: lignes(txtAccusations),
+      objets: lignes(txtObjets),
+    });
+    setTxtAccusations('');
+    setTxtObjets('');
+  };
 
   return (
     <Ecran>
@@ -151,70 +156,91 @@ export default function Salon() {
         )}
       </Panneau>
 
-      {/* Cartes personnalisées */}
+      {/* Deck de la partie */}
       <Panneau>
         <button
-          onClick={() => setOngletCartes(ongletCartes === 'ferme' ? 'ACCUSATION' : 'ferme')}
-          className="flex w-full items-center justify-between text-left"
+          onClick={() => setDeckOuvert(!deckOuvert)}
+          className="flex w-full items-center justify-between gap-2 text-left"
         >
-          <h2 className="text-xl font-bold">Cartes personnalisées</h2>
+          <h2 className="text-xl font-bold">Deck de la partie</h2>
           <span className="text-sm font-extrabold text-encre/50">
-            {etat.cartesPerso.accusations.length + etat.cartesPerso.objets.length > 0
-              ? `+${etat.cartesPerso.accusations.length + etat.cartesPerso.objets.length}`
-              : ''}{' '}
-            {ongletCartes === 'ferme' ? '▾' : '▴'}
+            {etat.deck.accusations} accus · {etat.deck.objets} objets {deckOuvert ? '▴' : '▾'}
           </span>
         </button>
 
-        {ongletCartes !== 'ferme' && (
+        {deckOuvert && (
           <div className="mt-3 flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-1.5">
-              {(['ACCUSATION', 'OBJET'] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setOngletCartes(t)}
-                  className={`rounded-xl border-[3px] border-encre py-2 text-sm font-extrabold ${
-                    ongletCartes === t ? 'bg-laiton shadow-bd-sm' : 'bg-white/70 text-encre/50'
-                  }`}
-                >
-                  {t === 'ACCUSATION' ? 'Accusations' : 'Objets'}
-                </button>
-              ))}
-            </div>
+            {estHote ? (
+              <>
+                <p className="text-xs font-bold text-encre/50">
+                  Ajoute tes propres cartes : <strong>une ligne = une carte</strong>. Les doublons
+                  et les lignes vides sont ignorés.
+                </p>
 
-            <div className="flex gap-2">
-              <input
-                className="champ !py-2.5 !text-base"
-                value={nouvelleCarte}
-                onChange={(e) => setNouvelleCarte(e.target.value.slice(0, 120))}
-                placeholder={
-                  ongletCartes === 'ACCUSATION' ? 'Tu as mangé mon dessert…' : 'un mot (ex. tiramisu)'
-                }
-                onKeyDown={(e) => e.key === 'Enter' && ajouter()}
-              />
-              <Bouton onClick={ajouter} disabled={!nouvelleCarte.trim()}>
-                +
-              </Bouton>
-            </div>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-extrabold uppercase tracking-wide text-encre/60">
+                    Accusations
+                  </span>
+                  <textarea
+                    className="champ !py-2.5 !text-base"
+                    rows={3}
+                    value={txtAccusations}
+                    onChange={(e) => setTxtAccusations(e.target.value)}
+                    placeholder={"Tu as vidé le frigo de la coloc.\nTu as vendu le chat du voisin."}
+                  />
+                </label>
 
-            {listePerso.length > 0 && (
-              <ul className="flex flex-wrap gap-1.5">
-                {listePerso.map((c) => (
-                  <li
-                    key={c}
-                    className="flex items-center gap-1.5 rounded-full border-2 border-encre/25 bg-white/70 px-3 py-1 text-sm font-bold"
-                  >
-                    {c}
-                    <button
-                      onClick={() => actions.supprimerCarte(ongletCartes, c)}
-                      className="text-encre/40 hover:text-coupable"
-                      aria-label={`Supprimer ${c}`}
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-extrabold uppercase tracking-wide text-encre/60">
+                    Objets
+                  </span>
+                  <textarea
+                    className="champ !py-2.5 !text-base"
+                    rows={3}
+                    value={txtObjets}
+                    onChange={(e) => setTxtObjets(e.target.value)}
+                    placeholder={"perceuse\ncornichon"}
+                  />
+                </label>
+
+                <Bouton variante="secondaire" onClick={ajouterCartes} disabled={!aQuoiAjouter}>
+                  ＋ Ajouter au deck
+                </Bouton>
+              </>
+            ) : (
+              <p className="text-xs font-bold text-encre/50">
+                Seul l'hôte peut ajouter des cartes.
+              </p>
+            )}
+
+            {(etat.cartesPerso.accusations.length > 0 || etat.cartesPerso.objets.length > 0) && (
+              <div className="flex flex-col gap-2 border-t-2 border-encre/10 pt-3">
+                <p className="text-sm font-extrabold uppercase tracking-wide text-encre/60">
+                  Ajoutées ({etat.cartesPerso.accusations.length + etat.cartesPerso.objets.length})
+                </p>
+                <ul className="flex flex-wrap gap-1.5">
+                  {[
+                    ...etat.cartesPerso.accusations.map((c) => ['ACCUSATION', c] as const),
+                    ...etat.cartesPerso.objets.map((c) => ['OBJET', c] as const),
+                  ].map(([type, c]) => (
+                    <li
+                      key={type + c}
+                      className="flex max-w-full items-center gap-1.5 rounded-full border-2 border-encre/25 bg-white/70 px-3 py-1 text-sm font-bold"
                     >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                      <span className="truncate">{c}</span>
+                      {estHote && (
+                        <button
+                          onClick={() => actions.supprimerCarte(type, c)}
+                          className="shrink-0 text-encre/40 hover:text-coupable"
+                          aria-label={`Supprimer ${c}`}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         )}

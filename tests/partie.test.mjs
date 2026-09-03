@@ -296,6 +296,54 @@ async function main() {
   q.forEach((x) => x.socket.disconnect());
   await pause(200);
 
+  // =========================================================================
+  titre('11. Deck et cartes personnalisées');
+  const d = ['Hôte', 'Autre'].map(creerClient);
+  const rd = await emit(d[0], 'creer_partie', { pseudo: 'Hôte' });
+  d[0].id = rd.session.playerId;
+  const rd2 = await emit(d[1], 'rejoindre_partie', { code: rd.session.code, pseudo: 'Autre' });
+  d[1].id = rd2.session.playerId;
+  await attendre(d[0], (e) => e.players.length === 2, '2 joueurs');
+
+  const deckDepart = { ...d[0].etat.deck };
+  ok(deckDepart.accusations >= 60 && deckDepart.objets >= 200, `deck chargé depuis cards.json (${deckDepart.accusations} accusations, ${deckDepart.objets} objets)`);
+
+  // Un non-hôte ne peut pas toucher au deck.
+  d[1].socket.emit('ajouter_cartes', { accusations: ['Tu as pirate le deck.'] });
+  await pause(300);
+  ok(d[0].etat.deck.accusations === deckDepart.accusations, 'un non-hôte ne peut pas ajouter de cartes');
+
+  // Une ligne = une carte ; lignes vides, doublons et objets trop longs ignorés.
+  d[0].socket.emit('ajouter_cartes', {
+    accusations: [
+      'Tu as bu le jus de cornichons.',
+      '   ',
+      'Tu as bu le jus de cornichons.',
+      'Tu as léché la rampe du métro.',
+    ],
+    objets: ['tuba', 'anticonstitutionnellement supercalifragilistique', 'perche à selfie', ''],
+  });
+  await attendre(d[0], (e) => e.cartesPerso.accusations.length > 0, 'cartes ajoutées');
+  await pause(200);
+  ok(
+    d[0].etat.cartesPerso.accusations.length === 2,
+    'accusations : doublon et ligne vide ignorés, les 2 valides ajoutées'
+  );
+  ok(d[0].etat.cartesPerso.objets.length === 1, 'objets : doublon du deck et objet trop long rejetés');
+  ok(d[0].etat.cartesPerso.objets[0] === 'perche à selfie', 'objet multi-mots accepté tel quel');
+  ok(
+    d[0].etat.deck.accusations === deckDepart.accusations + 2 &&
+      d[0].etat.deck.objets === deckDepart.objets + 1,
+    'le deck de la partie a bien grossi'
+  );
+  ok(d[1].etat.cartesPerso.accusations.length === 2, 'les cartes ajoutées sont visibles par tous');
+
+  d[0].socket.emit('supprimer_carte', { type: 'OBJET', texte: 'perche à selfie' });
+  await attendre(d[0], (e) => e.cartesPerso.objets.length === 0, 'carte supprimée');
+  ok(d[0].etat.deck.objets === deckDepart.objets, 'suppression : le deck revient à sa taille initiale');
+  d.forEach((x) => x.socket.disconnect());
+  await pause(200);
+
   console.log(`\n${echecs === 0 ? '✅ Tous les tests passent.' : `❌ ${echecs} test(s) en échec.`}`);
   process.exit(echecs === 0 ? 0 : 1);
 }

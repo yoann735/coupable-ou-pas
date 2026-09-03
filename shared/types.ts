@@ -61,7 +61,9 @@ export interface GameState {
   totalManches: number;
   /** Horloge serveur, pour que les clients corrigent leur decalage. */
   serverNow: number;
-  /** Cartes personnalisees ajoutees dans le salon. */
+  /** Taille du deck de la partie (cards.json + cartes ajoutees). */
+  deck: { accusations: number; objets: number };
+  /** Cartes personnalisees ajoutees dans le salon par l'hote. */
   cartesPerso: { accusations: string[]; objets: string[] };
 }
 
@@ -100,7 +102,8 @@ export interface ClientToServerEvents {
   ) => void;
   quitter_partie: () => void;
   maj_reglages: (p: Partial<Settings>) => void;
-  ajouter_carte: (p: { type: 'ACCUSATION' | 'OBJET'; texte: string }) => void;
+  /** Ajout en bloc depuis le salon : une ligne = une carte. Reserve a l'hote. */
+  ajouter_cartes: (p: { accusations?: string[]; objets?: string[] }) => void;
   supprimer_carte: (p: { type: 'ACCUSATION' | 'OBJET'; texte: string }) => void;
   lancer_partie: () => void;
   demarrer_manche: () => void;

@@ -4,6 +4,9 @@ Jeu de société multijoueur en ligne, façon Jackbox : **un hôte crée une par
 code à 4 lettres, et ses amis rejoignent depuis leur propre téléphone**. L'appli sert
 d'arbitre et d'affichage — la défense, elle, se plaide à l'oral.
 
+> 🔞 **Jeu d'ambiance pour adultes** : le deck fourni assume un ton trash et absurde.
+> Le deck est un simple fichier JSON, remplaçable en entier si tu veux un autre registre.
+
 > Les joueurs sont dans la même pièce (ou en appel vocal). L'appli gère les rôles, le tirage
 > au sort, le minuteur, les votes et les points.
 
@@ -76,11 +79,12 @@ npm test                # dans un autre
 
 ```
 .
+├── cards.json             # LE DECK : 60 accusations + 212 objets, éditable à la main
 ├── shared/types.ts        # types + protocole Socket.IO partagés client/serveur
 ├── server/
 │   └── src/
 │       ├── index.ts       # HTTP + Socket.IO, sert le client en production
-│       ├── data/cards.ts  # 68 accusations + 102 objets (facile à compléter)
+│       ├── data/deck.ts   # chargement et validation de cards.json
 │       └── game/
 │           ├── engine.ts  # machine à états, scoring, timers, déconnexions
 │           └── utils.ts   # code à 4 lettres, mélange, nettoyage des entrées
@@ -186,7 +190,27 @@ connu (par défaut `*`).
 
 ## Personnaliser les cartes
 
-- **Durablement** : ajoutez vos phrases dans `server/src/data/cards.ts` (deux tableaux de
-  chaînes, rien d'autre à toucher).
-- **Le temps d'une partie** : dans le salon, section « Cartes personnalisées » — les cartes
-  ajoutées se mélangent au deck de base pour cette partie seulement.
+### Durablement : `cards.json`
+
+Le deck vit à la racine du projet, dans un seul fichier :
+
+```json
+{
+  "accusations": ["Tu as ...", "..."],
+  "objets": ["crayon", "tiramisu", "..."]
+}
+```
+
+Une accusation dit **ce que l'accusé a fait**, jamais pourquoi. Un objet est un mot (ou
+un groupe de mots court). Le serveur charge ce fichier au démarrage, ignore les doublons
+et les lignes vides, et refuse de démarrer si le fichier est absent ou illisible — mieux
+vaut une erreur claire qu'une partie sans cartes. `CARDS_FILE` permet de pointer un autre
+fichier.
+
+### Le temps d'une partie : depuis le salon
+
+L'hôte déplie **« Deck de la partie »** et colle ses propres cartes dans les deux zones de
+texte : **une ligne = une carte**. Elles s'ajoutent au deck de la partie en cours.
+Sont ignorés : les lignes vides, les doublons, les accusations de moins de 3 caractères et
+les objets de plus de 30 caractères (rejetés plutôt que tronqués). Limite de 100 cartes
+ajoutées par type.

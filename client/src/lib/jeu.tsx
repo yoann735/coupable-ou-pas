@@ -17,7 +17,7 @@ interface Actions {
   rejoindre: (code: string, pseudo: string) => void;
   quitter: () => void;
   majReglages: (patch: Partial<Settings>) => void;
-  ajouterCarte: (type: 'ACCUSATION' | 'OBJET', texte: string) => void;
+  ajouterCartes: (p: { accusations?: string[]; objets?: string[] }) => void;
   supprimerCarte: (type: 'ACCUSATION' | 'OBJET', texte: string) => void;
   lancer: () => void;
   cocherMot: (index: number) => void;
@@ -142,7 +142,7 @@ export function FournisseurJeu({ children }: { children: ReactNode }) {
         oublierSession();
       },
       majReglages: (patch) => socket.emit('maj_reglages', patch),
-      ajouterCarte: (type, texte) => socket.emit('ajouter_carte', { type, texte }),
+      ajouterCartes: (p) => socket.emit('ajouter_cartes', p),
       supprimerCarte: (type, texte) => socket.emit('supprimer_carte', { type, texte }),
       lancer: () => socket.emit('lancer_partie'),
       cocherMot: (index) => socket.emit('cocher_mot', { index }),
