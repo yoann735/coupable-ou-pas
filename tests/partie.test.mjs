@@ -30,7 +30,8 @@ function creerClient(pseudo) {
 }
 
 const emit = (c, ev, p) => new Promise((res) => c.socket.emit(ev, p, res));
-function attendre(c, test, label, timeout = 9000) {
+const TIMEOUT = Number(process.env.TIMEOUT_TEST ?? 9000);
+function attendre(c, test, label, timeout = TIMEOUT) {
   return new Promise((res, rej) => {
     if (c.etat && test(c.etat)) return res(c.etat);
     const a = { test, resolve: res };

@@ -170,14 +170,15 @@ démarrage `npm start`, et c'est tout.
 ### 2. Le client sur Vercel
 
 Le projet Vercel utilise `vercel.json` (framework Vite, sortie `client/dist`).
-Une seule variable d'environnement à ajouter dans **Settings → Environment
-Variables** :
+L'URL du serveur y est déjà inscrite :
 
-| Variable | Valeur |
-| --- | --- |
-| `VITE_SERVER_URL` | l'URL du serveur Render, ex. `https://coupable-ou-pas.onrender.com` |
+```json
+"build": { "env": { "VITE_SERVER_URL": "https://coupable-ou-pas.onrender.com" } }
+```
 
-Sans cette variable, le client parle au serveur qui lui a servi la page — ce qui
+Elle est figée **au moment du build** (comportement de Vite) : si tu changes de
+serveur, modifie cette ligne et repousse — inutile de passer par le dashboard.
+Sans cette variable, le client parle au serveur qui lui a servi la page, ce qui
 est exactement le comportement voulu pour le déploiement Render tout-en-un.
 
 Côté serveur, `CORS_ORIGIN` peut être restreint au domaine Vercel une fois celui-ci

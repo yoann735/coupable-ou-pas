@@ -3,5 +3,10 @@
   "framework": "vite",
   "installCommand": "npm install",
   "buildCommand": "npm run build",
-  "outputDirectory": "client/dist"
+  "outputDirectory": "client/dist",
+  "build": {
+    "env": {
+      "VITE_SERVER_URL": "https://coupable-ou-pas.onrender.com"
+    }
+  }
 }
