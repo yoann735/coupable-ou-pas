@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: theme('fontFamily.corps');
+    color: theme('colors.encre');
+    background-color: #6d3b21;
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(255, 224, 176, 0.28), transparent 55%),
+      radial-gradient(circle at 85% 100%, rgba(0, 0, 0, 0.28), transparent 50%),
+      repeating-linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.05) 0px,
+        rgba(0, 0, 0, 0.05) 2px,
+        transparent 2px,
+        transparent 26px
+      ),
+      linear-gradient(160deg, #8b4a2b 0%, #6d3b21 45%, #4a2513 100%);
+    background-attachment: fixed;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+
+  button {
+    font-family: inherit;
+    touch-action: manipulation;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: theme('fontFamily.titre');
+    letter-spacing: -0.01em;
+  }
+
+  input,
+  select {
+    font-family: inherit;
+  }
+}
+
+@layer components {
+  .parchemin {
+    @apply rounded-3xl border-[3px] border-encre/80 bg-parchemin shadow-carte;
+  }
+
+  .titre-jeu {
+    font-family: theme('fontFamily.titre');
+    text-shadow:
+      0 2px 0 rgba(43, 27, 20, 0.9),
+      0 5px 14px rgba(0, 0, 0, 0.45);
+  }
+
+  .champ {
+    @apply w-full rounded-2xl border-[3px] border-encre/80 bg-white/90 px-4 py-3.5 text-lg font-bold
+           text-encre outline-none placeholder:font-semibold placeholder:text-encre/35
+           focus:border-laiton focus:ring-4 focus:ring-laiton/30;
+  }
+
+  /* Sécurité iPhone : on évite que le contenu passe sous l'encoche / la barre. */
+  .zone-sure {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Barre de défilement discrète */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(43, 27, 20, 0.35);
+  border-radius: 99px;
+}

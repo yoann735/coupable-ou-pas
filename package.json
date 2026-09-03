@@ -1,0 +1,31 @@
+{
+  "name": "coupable-ou-pas",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Coupable ou pas coupable ? — jeu de societe multijoueur en ligne, facon Jackbox.",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n SERVER,CLIENT -c magenta,cyan \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm run dev --workspace server",
+    "dev:client": "npm run dev --workspace client",
+    "build": "npm run build --workspace client",
+    "start": "npm run start --workspace server",
+    "typecheck": "npm run typecheck --workspace server && npm run typecheck --workspace client",
+    "test": "node tests/partie.test.mjs",
+    "test:serveur": "DUREE_ACCUSATION_MS=400 DUREE_TIRAGE_MS=400 DUREE_VOTE_MS=3000 DUREE_RESULTAT_MS=1500 PORT=3111 npm run start --workspace server",
+    "bots": "node tests/bots.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
